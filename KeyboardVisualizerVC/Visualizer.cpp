@@ -855,7 +855,8 @@ void Visualizer::NetUpdateThread()
         case NET_MODE_CLIENT:
             if (port->connected)
             {
-                if (port->tcp_listen((char *)buf, sizeof(buf)) == sizeof(settings_pkt_type))
+                int size = port->tcp_listen((char *)buf, sizeof(buf));
+                if (size == sizeof(settings_pkt_type))
                 {
                     amplitude = ((settings_pkt_type *)buf)->amplitude;
                     avg_mode = ((settings_pkt_type *)buf)->avg_mode;
@@ -872,14 +873,15 @@ void Visualizer::NetUpdateThread()
                     frgd_mode = ((settings_pkt_type *)buf)->frgd_mode;
                     bkgd_step = ((settings_pkt_type *)buf)->bkgd_step;
                 }
-                else
+                else if (size == sizeof(fft))
                 {
                     memcpy(&fft, buf, sizeof(fft));
                 }
+                Sleep(5);
             }
             else
             {
-                Sleep(10);
+                Sleep(100);
             }
             break;
         }

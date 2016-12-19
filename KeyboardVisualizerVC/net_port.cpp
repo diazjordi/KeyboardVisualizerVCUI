@@ -199,6 +199,7 @@ int net_port::udp_listen(char * recv_data, int length)
 int net_port::tcp_listen(char * recv_data, int length)
 {
     int ret = 0;
+    int len = 0;
     timeval waitd;
 
     waitd.tv_sec = 1;
@@ -206,19 +207,40 @@ int net_port::tcp_listen(char * recv_data, int length)
 
     if (connected)
     {
-        if (select(sock, NULL, NULL, 0, &waitd))
+        while (ret != sizeof(len))
         {
-            ret = recv(sock, recv_data, length, 0);
+            if (select(sock, NULL, NULL, 0, &waitd))
+            {
+                ret = recv(sock, (char *)&len, sizeof(len), 0);
+            }
+            if (ret == -1)
+            {
+                connected = FALSE;
+#ifdef WIN32
+                closesocket(sock);
+#else
+                close(sock);
+#endif
+                return(0);
+            }
         }
-        else
+        ret = 0;
+        while (ret != len)
         {
-            ret = -1;
-        }
-
-        if (ret == -1)
-        {
-            connected = FALSE;
-            closesocket(sock);
+            if (select(sock, NULL, NULL, 0, &waitd))
+            {
+                ret = recv(sock, recv_data + ret, len, 0);
+            }
+            if (ret == -1)
+            {
+                connected = FALSE;
+#ifdef WIN32
+                closesocket(sock);
+#else
+                close(sock);
+#endif
+                return(0);
+            }
         }
     }
     return(ret);
@@ -232,9 +254,10 @@ int net_port::udp_write(char * buffer, int length)
 int net_port::tcp_write(char * buffer, int length)
 {
     int ret = length;
-    for (int i = 0; i < clients.size(); i++)
+    for (unsigned int i = 0; i < clients.size(); i++)
     {
         int val = length;
+        val = send(*(clients[i]), (const char *)&length, sizeof(length), 0);
         val = send(*(clients[i]), buffer, length, 0);
 
         if (val == -1)
